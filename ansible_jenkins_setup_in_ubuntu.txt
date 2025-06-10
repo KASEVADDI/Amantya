@@ -1,0 +1,412 @@
+how to setup master node ansible in ubuntu20.04.
+===================================
+1. setup vm workstation player for windows.
+2. download ubuntu-20.04.6-desktop-amd64 image from web
+3. configure ubuntu os on vm ware
+4. need to install pre-requests of ansible
+   . sudo apt-get install openssl
+   . sudo apt-get install git
+4. run " sudo apt-get install ansible"
+   check "ansible --version"
+5. home/kasi/etc/ansible/hosts nd ansible.cfg  -- edit host and ansible.cfg  files
+   /home/kasi -- visudo
+   ---> "ssh-keygen" to genereate ssh key.
+
+6. create user useradd kasi
+   create userpassed Muthyal@222
+  ---> "ssh-keygen" to genereate ssh key.
+ check ssh authentication : ssh kasi@ipadress_of_workernode ( if you facing any issues install ssh agent)
+  copy this .ssh folder into workernode server
+  cmd: scp-copy-id kase@ipadress of workernodes (username kasi is wokernode)
+note: create same user in workernode as well.
+
+
+
+
+how to setup worker node ansible using ubuntu20.04.
+=================================================
+3. configure ubuntu os on vm ware
+4. need to install pre-requests of ansible
+   . sudo apt-get install openssl
+   . sudo apt-get install git
+4. run " sudo apt-get install ansible"
+   check "ansible --version"
+5. home/kasi/etc/ansible/hosts nd ansible.cfg  -- edit host and ansible.cfg  files
+   /home/kasi -- visudo
+   ---> "ssh-keygen" to genereate ssh key.
+
+6. create user useradd kasi
+   create userpassed Muthyal@222
+
+now run sample playbook.yaml for git installation.
+before run this playbook delete git in your servers.
+sudo apt-get remove git.
+
+
+
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/home/kasi/roles/system_info/tasks -- was created main.yaml file here.
+
+
+sudo nano main.yaml
+---
+- name: Gather OS Version
+  command: lsb_release -a
+  register: os_version
+
+- name: Print OS Version
+  debug:
+    msg: "{{ os_version.stdout }}"
+
+- name: Gather CPU Architecture
+  command: uname -m
+  register: cpu_architecture
+
+- name: Print CPU Architecture
+  debug:
+    msg: "{{ cpu_architecture.stdout }}"
+
+- name: Gather Total Memory in GBis
+  command: awk '/MemTotal/ {printf "%.2f\n", $2/1024/1024}' /proc/meminfo
+  register: total_memory
+
+- name: Print Total Memory in GBi
+  debug:
+    msg: "{{ total_memory.stdout }}"
+
+- name: Gather Disk Space
+  command: df -h /dev/sda5
+  register: disk_space
+
+- name: Print Disk Space
+  debug:
+    msg: "{{ disk_space.stdout }}"
+
+- name: Gather Network Interfaces
+  command: ifconfig
+  register: network_interfaces
+
+- name: Print Network Interfaces
+  debug:
+    msg: "{{ network_interfaces.stdout }}"
+
+# Conditional tasks based on gathered information
+
+- name: Perform action if CPU architecture is x86_64
+  debug:
+    msg: "CPU architecture is x86_64"
+  when: cpu_architecture.stdout == "x86_64"
+=========================================
+
+next has created playbook.yaml file at /home/kasi sudo nano playbook.yaml to run mail.yaml role.
+# playbook.yml
+
+---
+- hosts: all
+  gather_facts: no
+  roles:
+    - system_info
+
+ansible-playbook playbook.yaml --ask-become-pass ( to run playbook.yaml for excute main.yaml role.)
+
+II-PHASE
+
+Jenkins Installation Cases through Ansible				:
+Install Java (required for Jenkins)
+Add Jenkins Repository
+Install Jenkins
+Start jenkins
+
+
+ansible-playbook install_jenkins.yaml --ask-become-pass
+
+ansible-playbook jenkins.yaml --ask-become-pass
+===========
+documentation for jenkins installation>
+
+i have created directory called ansible_jenkins inside/home/kasi/ansible_jenkins --> here i have created file install_jenkins.yaml
+
+---
+- name: Install Jenkins on Ubuntu
+  hosts: all
+  become: yes
+  tasks:
+
+#    - name: Update APT package index
+#      apt:
+#        update_cache: yes
+
+    - name: Install required dependencies
+      apt:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - openjdk-11-jdk
+        - gnupg2
+
+    - name: Add Jenkins apt repository key
+      apt_key:
+        url: https://pkg.jenkins.io/debian/jenkins.io.key
+        state: present
+
+    - name: Add Jenkins apt repository
+      apt_repository:
+        repo: deb http://pkg.jenkins.io/debian-stable binary/
+        state: present
+
+#    - name: Update APT package index after adding Jenkins repository
+#      apt:
+#        update_cache: yes
+#
+    - name: Install Jenkins
+      apt:
+        name: jenkins
+        state: present
+
+    - name: Start and enable Jenkins service
+      systemd:
+        name: jenkins
+        state: started
+        enabled: yes
+
+    - name: Ensure firewall allows Jenkins (port 8080)
+      ufw:
+        rule: allow
+        port: '8080'
+        proto: tcp
+
+    - name: Fetch initial admin password
+      slurp:
+        src: /var/lib/jenkins/secrets/initialAdminPassword
+      register: initial_admin_password
+
+    - name: Show Jenkins initial admin password
+      debug:
+        msg: "Initial Jenkins Admin Password: {{ initial_admin_password.content | b64decode }}"
+===========================
+ansible-galaxy role install geerlingguy.java
+ansible-galaxy role install geerlingguy.jenkins
+ansible-playbook install_jenkins.yaml --ask-become-pass (run this command for excute install_jenkins.yaml)
+------
+again i have created file called jenkins.yaml inside ansible_jenkins folder. ex:/home/kasi/ansible_jenkins
+- hosts: all
+  become: true
+  
+  #vars:
+  #  jenkins_hostname: jenkins.example.com
+  #  java_packages:
+  #    - openjdk-8-jdk
+
+  roles:
+    - role: geerlingguy.java
+    - role: geerlingguy.jenkins
+=============
+ansible-playbook jenkins.yaml --ask-become-pass (run this command for excute jenkins.yaml)
+------
+note: https://galaxy.ansible.com/ui/standalone/roles/geerlingguy/jenkins/install/  -- repo link for install jenkins through ansible roles.
+
+run below commands if we face in issues.
+wget -q -O - https://pkg.jenkins.io/debian/jenkins.io.key | sudo apt-key add -
+sudo sh -c 'echo deb http://pkg.jenkins.io/debian-stable binary/ > /etc/apt/sources.list.d/jenkins.list'
+sudo apt update
+------------
+
+
+
+
+
+=================
+---
+- name: Gather OS Version
+  command: lsb_release -a
+  register: os_version
+
+- name: Print OS Version
+  debug:
+    msg: "{{ os_version.stdout }}"
+
+- name: Gather CPU Architecture
+  command: uname -m
+  register: cpu_architecture
+
+- name: Print CPU Architecture
+  debug:
+    msg: "{{ cpu_architecture.stdout }}"
+
+- name: Gather Total Memory in GBis
+  command: awk '/MemTotal/ {printf "%.2f\n", $2/1024/1024}' /proc/meminfo
+  register: total_memory
+
+- name: Print Total Memory in GBi
+  debug:
+    msg: "{{ total_memory.stdout }}"
+
+- name: Gather Disk Space
+  command: df -h /dev/sda5
+  register: disk_space
+
+- name: Print Disk Space
+  debug:
+    msg: "{{ disk_space.stdout }}"
+
+- name: Gather Network Interfaces
+  command: ifconfig
+  register: network_interfaces
+
+- name: Print Network Interfaces
+  debug:
+    msg: "{{ network_interfaces.stdout }}"
+
+# Conditional tasks based on gathered information
+
+- name: Perform action if CPU architecture is x86_64
+  debug:
+    msg: "CPU architecture is x86_64"
+  when: cpu_architecture.stdout == "x86_64"
+====================================
+below script is without conditions of jenkins installation
+
+---
+- name: Install Jenkins on Ubuntu
+  hosts: all
+  become: yes
+  tasks:
+
+#    - name: Update APT package index
+#      apt:
+#        update_cache: yes
+
+    - name: Install required dependencies
+      apt:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - openjdk-11-jdk
+        - gnupg2
+
+    - name: Add Jenkins apt repository key
+      apt_key:
+        url: https://pkg.jenkins.io/debian/jenkins.io.key
+        state: present
+
+    - name: Add Jenkins apt repository
+      apt_repository:
+        repo: deb http://pkg.jenkins.io/debian-stable binary/
+        state: present
+
+#    - name: Update APT package index after adding Jenkins repository
+#      apt:
+#        update_cache: yes
+#
+    - name: Install Jenkins
+      apt:
+        name: jenkins
+        state: present
+
+    - name: Start and enable Jenkins service
+      systemd:
+        name: jenkins
+        state: started
+        enabled: yes
+
+    - name: Ensure firewall allows Jenkins (port 8080)
+      ufw:
+        rule: allow
+        port: '8080'
+        proto: tcp
+
+    - name: Fetch initial admin password
+      slurp:
+        src: /var/lib/jenkins/secrets/initialAdminPassword
+      register: initial_admin_password
+
+    - name: Show Jenkins initial admin password
+      debug:
+        msg: "Initial Jenkins Admin Password: {{ initial_admin_password.content | b64decode }}"
+
+--------------------
+below script is with conditions of jenkins installation
+
+---
+- name: Install Jenkins on Ubuntu
+  hosts: all
+  become: yes
+  vars:
+    jenkins_port: 8080
+    jenkins_repo_key_url: https://pkg.jenkins.io/debian/jenkins.io.key
+    jenkins_repo: deb http://pkg.jenkins.io/debian-stable binary/
+  tasks:
+
+    - name: Update APT package index
+      apt:
+        update_cache: yes
+      when: update_cache is defined and update_cache
+
+    - name: Install required dependencies
+      apt:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - openjdk-11-jdk
+        - gnupg2
+
+    - name: Add Jenkins apt repository key
+      apt_key:
+        url: "{{ jenkins_repo_key_url }}"
+        state: present
+
+    - name: Add Jenkins apt repository
+      apt_repository:
+        repo: "{{ jenkins_repo }}"
+        state: present
+
+    - name: Update APT package index after adding Jenkins repository
+      apt:
+        update_cache: yes
+      when: update_cache_after_repo is defined and update_cache_after_repo
+
+    - name: Install Jenkins
+      apt:
+        name: jenkins
+        state: present
+
+    - name: Start and enable Jenkins service
+      systemd:
+        name: jenkins
+        state: started
+        enabled: yes
+
+    - name: Ensure firewall allows Jenkins (port {{ jenkins_port }})
+      ufw:
+        rule: allow
+        port: "{{ jenkins_port }}"
+        proto: tcp
+
+    - name: Fetch initial admin password
+      slurp:
+        src: /var/lib/jenkins/secrets/initialAdminPassword
+      register: initial_admin_password
+
+    - name: Show Jenkins initial admin password
+      debug:
+        msg: "Initial Jenkins Admin Password: {{ initial_admin_password.content | b64decode }}"
+
+
